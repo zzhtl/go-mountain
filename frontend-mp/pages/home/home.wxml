@@ -1,0 +1,11 @@
+<view class="container">
+  <view class="userinfo">
+    <text>欢迎，{{user.name || user.openid}}</text>
+  </view>
+  <view class="userinfo">
+    <text>手机号：{{user.phone || '未绑定'}}</text>
+  </view>
+  <view class="actions">
+    <button bindtap="onEdit">编辑信息</button>
+  </view>
+</view> 

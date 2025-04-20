@@ -1,0 +1,9 @@
+{
+  "pages": [
+    "pages/register/register",
+    "pages/home/home"
+  ],
+  "window": {
+    "navigationBarTitleText": "远山公益小程序"
+  }
+} 

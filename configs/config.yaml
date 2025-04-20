@@ -1,0 +1,17 @@
+server:
+  port: 8080
+
+database:
+  driver: sqlite3
+  dsn: data.db
+
+admin:
+  username: admin
+  password: adminpass
+
+jwt:
+  secret: your_jwt_secret
+
+wechat:
+  app_id: your_app_id
+  secret: your_secret 
