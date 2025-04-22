@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-.cursorrules
+.cursor*
 go-mountain
 
 # Test binary, built with `go test -c`
