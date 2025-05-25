@@ -1,0 +1,48 @@
+<view class="container">
+  <!-- 文章列表 -->
+  <view class="article-list">
+    <view 
+      class="article-item" 
+      wx:for="{{articles}}" 
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onArticleTap"
+    >
+      <!-- 缩略图 -->
+      <image 
+        wx:if="{{item.thumbnail}}" 
+        class="article-thumb" 
+        src="{{item.thumbnail}}"
+        mode="aspectFill"
+      />
+      <view class="article-thumb-placeholder" wx:else>
+        <text>暂无图片</text>
+      </view>
+      
+      <!-- 文章信息 -->
+      <view class="article-info">
+        <view class="article-title">{{item.title}}</view>
+        <view class="article-meta">
+          <text class="article-author">{{item.author || '佚名'}}</text>
+          <text class="article-date">{{item.created_at}}</text>
+          <text class="article-views">{{item.view_count || 0}}次浏览</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 加载提示 -->
+  <view wx:if="{{loading && articles.length > 0}}" class="loading-more">
+    <text>加载中...</text>
+  </view>
+  
+  <!-- 没有更多 -->
+  <view wx:if="{{!hasMore && articles.length > 0}}" class="no-more">
+    <text>没有更多了</text>
+  </view>
+  
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && articles.length === 0}}" class="empty">
+    <text>暂无文章</text>
+  </view>
+</view> 

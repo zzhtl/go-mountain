@@ -35,7 +35,7 @@ const error = ref('')
 
 onMounted(async () => {
   try {
-    const res = await axios.get('/admin/users')
+    const res = await axios.get('/api/admin/users')
     users.value = res.data
   } catch (e) {
     error.value = e.response?.data?.error || '加载用户失败'

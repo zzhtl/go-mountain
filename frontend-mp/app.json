@@ -1,9 +1,13 @@
 {
   "pages": [
+    "pages/home/home",
     "pages/register/register",
-    "pages/home/home"
+    "pages/articles/list",
+    "pages/articles/detail"
   ],
   "window": {
-    "navigationBarTitleText": "远山公益小程序"
+    "navigationBarTitleText": "远山公益小程序",
+    "navigationBarBackgroundColor": "#667eea",
+    "navigationBarTextStyle": "white"
   }
 } 

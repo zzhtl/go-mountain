@@ -1,0 +1,30 @@
+<view class="container">
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
+  </view>
+  
+  <!-- 文章内容 -->
+  <view wx:elif="{{article}}" class="article">
+    <!-- 文章头部 -->
+    <view class="article-header">
+      <view class="article-title">{{article.title}}</view>
+      <view class="article-meta">
+        <text class="meta-item">{{article.column_name}}</text>
+        <text class="meta-item">{{article.author || '佚名'}}</text>
+        <text class="meta-item">{{article.created_at}}</text>
+        <text class="meta-item">{{article.view_count || 0}}次浏览</text>
+      </view>
+    </view>
+    
+    <!-- 文章正文 -->
+    <view class="article-content">
+      <rich-text nodes="{{article.content}}" />
+    </view>
+  </view>
+  
+  <!-- 空状态 -->
+  <view wx:else class="empty">
+    <text>文章不存在</text>
+  </view>
+</view> 

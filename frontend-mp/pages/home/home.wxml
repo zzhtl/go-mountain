@@ -1,11 +1,33 @@
 <view class="container">
-  <view class="userinfo">
-    <text>欢迎，{{user.name || user.openid}}</text>
+  <!-- 页面标题 -->
+  <view class="header">
+    <text class="title">远山公益</text>
+    <text class="subtitle">用爱心点亮远山</text>
   </view>
-  <view class="userinfo">
-    <text>手机号：{{user.phone || '未绑定'}}</text>
+  
+  <!-- 加载提示 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中...</text>
   </view>
-  <view class="actions">
-    <button bindtap="onEdit">编辑信息</button>
+  
+  <!-- 栏目列表 -->
+  <view wx:else class="column-list">
+    <view 
+      class="column-item" 
+      wx:for="{{columns}}" 
+      wx:key="id"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}"
+      bindtap="onColumnTap"
+    >
+      <view class="column-name">{{item.name}}</view>
+      <view class="column-desc">{{item.description || '暂无描述'}}</view>
+      <view class="column-arrow">></view>
+    </view>
+  </view>
+  
+  <!-- 空状态 -->
+  <view wx:if="{{!loading && columns.length === 0}}" class="empty">
+    <text>暂无栏目</text>
   </view>
 </view> 

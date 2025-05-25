@@ -1,5 +1,5 @@
 {
-  "name": "frontend",
+  "name": "frontend-admin",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -11,7 +11,10 @@
   "dependencies": {
     "vue": "^3.5.13",
     "vue-router": "^4.1.6",
-    "axios": "^1.4.0"
+    "axios": "^1.4.0",
+    "@tinymce/tinymce-vue": "^5.1.1",
+    "tinymce": "^6.8.2",
+    "element-plus": "^2.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.2",
