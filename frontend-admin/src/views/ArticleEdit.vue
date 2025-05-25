@@ -50,10 +50,13 @@
         
         <el-form-item label="文章内容">
           <div class="editor-container">
-            <Editor
-              v-model="form.content"
-              :api-key="tinymceApiKey"
-              :init="editorInit"
+            <QuillEditor
+              v-model:content="form.content"
+              :toolbar="editorToolbar"
+              contentType="html"
+              theme="snow"
+              @textChange="onEditorTextChange"
+              @ready="onEditorReady"
             />
           </div>
         </el-form-item>
@@ -67,7 +70,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import Editor from '@tinymce/tinymce-vue'
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import axios from 'axios'
 
 const router = useRouter()
@@ -84,80 +88,115 @@ const form = ref({
   status: 0
 })
 
-// TinyMCE配置
-const tinymceApiKey = 'no-api-key' // 使用自托管版本
+// 上传相关配置
 const uploadUrl = '/api/admin/upload/image'
+const uploadVideoUrl = '/api/admin/upload/video'
 const uploadHeaders = computed(() => ({
   Authorization: axios.defaults.headers.common['Authorization']
 }))
 
-// 富文本编辑器配置
-const editorInit = {
-  height: 500,
-  menubar: true,
-  language: 'zh_CN',
-  plugins: [
-    'advlist', 'autolink', 'lists', 'link', 'image', 'media', 'charmap', 'preview',
-    'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-    'insertdatetime', 'table', 'help', 'wordcount'
-  ],
-  toolbar: 'undo redo | blocks | ' +
-    'bold italic forecolor | alignleft aligncenter ' +
-    'alignright alignjustify | bullist numlist outdent indent | ' +
-    'image media | removeformat | help',
-  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+// Quill编辑器工具栏配置
+const editorToolbar = [
+  ['bold', 'italic', 'underline', 'strike'],
+  ['blockquote', 'code-block'],
+  [{ 'header': 1 }, { 'header': 2 }],
+  [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+  [{ 'script': 'sub' }, { 'script': 'super' }],
+  [{ 'indent': '-1' }, { 'indent': '+1' }],
+  [{ 'direction': 'rtl' }],
+  [{ 'size': ['small', false, 'large', 'huge'] }],
+  [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+  [{ 'color': [] }, { 'background': [] }],
+  [{ 'font': [] }],
+  [{ 'align': [] }],
+  ['clean'],
+  ['link', 'image', 'video']
+]
+
+// 编辑器事件处理
+const onEditorTextChange = () => {
+  // 可以在这里添加内容变化时的处理逻辑
+}
+
+const onEditorReady = (quill) => {
+  // 自定义图片上传处理
+  const toolbar = quill.getModule('toolbar')
   
-  // 图片上传配置
-  images_upload_url: uploadUrl,
-  images_upload_handler: async (blobInfo, progress) => {
-    return new Promise(async (resolve, reject) => {
-      const formData = new FormData()
-      formData.append('file', blobInfo.blob(), blobInfo.filename())
-      
-      try {
-        const res = await axios.post(uploadUrl, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          onUploadProgress: (e) => {
-            progress(e.loaded / e.total * 100)
-          }
-        })
-        resolve(res.data.url)
-      } catch (error) {
-        reject(error.response?.data?.error || '上传失败')
-      }
-    })
-  },
-  
-  // 视频上传配置
-  file_picker_types: 'media',
-  file_picker_callback: (callback, value, meta) => {
-    if (meta.filetype === 'media') {
-      const input = document.createElement('input')
-      input.setAttribute('type', 'file')
-      input.setAttribute('accept', 'video/*')
-      
-      input.onchange = async function() {
-        const file = this.files[0]
+  // 图片上传处理
+  toolbar.addHandler('image', () => {
+    const input = document.createElement('input')
+    input.setAttribute('type', 'file')
+    input.setAttribute('accept', 'image/*')
+    input.click()
+    
+    input.onchange = async () => {
+      const file = input.files[0]
+      if (file) {
         const formData = new FormData()
         formData.append('file', file)
         
         try {
-          const res = await axios.post('/api/admin/upload/video', formData, {
+          ElMessage.info('正在上传图片...')
+          const res = await axios.post(uploadUrl, formData, {
             headers: {
               'Content-Type': 'multipart/form-data'
             }
           })
-          callback(res.data.url, { title: file.name })
+          
+          // 获取光标位置并插入图片
+          const range = quill.getSelection()
+          quill.insertEmbed(range.index, 'image', res.data.url)
+          // 光标向后移动一位
+          quill.setSelection(range.index + 1)
+          ElMessage.success('图片上传成功')
         } catch (error) {
+          ElMessage.error('图片上传失败')
+        }
+      }
+    }
+  })
+  
+  // 视频上传处理
+  toolbar.addHandler('video', () => {
+    const input = document.createElement('input')
+    input.setAttribute('type', 'file')
+    input.setAttribute('accept', 'video/*')
+    input.click()
+    
+    input.onchange = async () => {
+      const file = input.files[0]
+      if (file) {
+        const formData = new FormData()
+        formData.append('file', file)
+        
+        try {
+          ElMessage.info('正在上传视频，请稍候...')
+          const res = await axios.post(uploadVideoUrl, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            },
+            // 添加上传进度监听
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
+              if (percentCompleted % 20 === 0) {
+                ElMessage.info(`视频上传进度: ${percentCompleted}%`)
+              }
+            }
+          })
+          
+          // 获取光标位置并插入视频
+          const range = quill.getSelection()
+          quill.insertEmbed(range.index, 'video', res.data.url)
+          // 光标向后移动一位
+          quill.setSelection(range.index + 1)
+          ElMessage.success('视频上传成功')
+        } catch (error) {
+          console.error('视频上传失败:', error)
           ElMessage.error(error.response?.data?.error || '视频上传失败')
         }
       }
-      
-      input.click()
     }
-  }
+  })
 }
 
 // 加载栏目列表
@@ -275,7 +314,80 @@ onMounted(() => {
   color: #409eff;
 }
 
+/* 修复卡片和表单样式，使其可以扩展 */
+:deep(.el-card) {
+  height: auto;
+  overflow: visible;
+}
+
+:deep(.el-card__body) {
+  height: auto;
+  overflow: visible;
+  padding-bottom: 50px;
+}
+
+:deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+:deep(.el-form-item__content) {
+  height: auto;
+  overflow: visible;
+}
+
+/* 编辑器容器样式 */
 .editor-container {
   width: 100%;
+  min-height: 500px;
+  height: auto;
+  position: relative;
+}
+
+/* Quill编辑器样式 */
+:deep(.quill-editor) {
+  height: auto !important;
+  min-height: 500px;
+  max-height: none !important;
+}
+
+:deep(.ql-container) {
+  height: auto !important;
+  min-height: 500px;
+  max-height: none !important;
+  overflow: visible;
+}
+
+:deep(.ql-editor) {
+  min-height: 500px;
+  height: auto !important;
+  max-height: none !important;
+  overflow-y: visible;
+}
+
+/* 工具栏固定在顶部 */
+:deep(.ql-toolbar) {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
+  border-bottom: 1px solid #ccc;
+}
+
+/* 视频样式修复 */
+:deep(.ql-editor .ql-video) {
+  display: block;
+  max-width: 100%;
+  width: 640px; /* 设置合适的视频宽度 */
+  height: 360px; /* 设置16:9比例的高度 */
+  margin: 15px auto;
+}
+
+/* 确保所有媒体元素不超出容器 */
+:deep(.ql-editor img),
+:deep(.ql-editor video) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 </style> 

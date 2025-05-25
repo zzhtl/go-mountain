@@ -66,12 +66,17 @@ const logout = () => {
 <style scoped>
 .layout-container {
   height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .el-header {
   background-color: #545c64;
   color: white;
   line-height: 60px;
+  height: 60px;
+  padding: 0 20px;
+  flex-shrink: 0;
 }
 
 .header-content {
@@ -85,8 +90,15 @@ const logout = () => {
   font-size: 20px;
 }
 
+.el-container {
+  flex: 1;
+  overflow: hidden;
+}
+
 .el-aside {
   background-color: #f5f5f5;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 
 .el-menu-vertical {
@@ -97,5 +109,7 @@ const logout = () => {
 .el-main {
   background-color: #f0f2f5;
   padding: 20px;
+  height: calc(100vh - 60px);
+  overflow-y: auto;
 }
 </style> 
