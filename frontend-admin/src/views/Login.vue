@@ -45,15 +45,30 @@ const onSubmit = async () => {
   
   loading.value = true
   try {
-    const res = await axios.post('/api/admin/auth/login', form.value)
+    // 先尝试后台用户登录
+    const res = await axios.post('/api/admin/backend-auth/login', form.value)
     const token = res.data.token
+    const userInfo = res.data.user
+    
     localStorage.setItem('token', token)
+    localStorage.setItem('userInfo', JSON.stringify(userInfo))
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+    
     ElMessage.success('登录成功')
     router.push('/admin/articles')
-  } catch (error) {
-    console.error('登录失败', error)
-    ElMessage.error(error.response?.data?.error || '登录失败，请检查用户名和密码')
+  } catch (backendError) {
+    // 如果后台用户登录失败，尝试原有的admin登录
+    try {
+      const res = await axios.post('/api/admin/auth/login', form.value)
+      const token = res.data.token
+      localStorage.setItem('token', token)
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      ElMessage.success('登录成功')
+      router.push('/admin/articles')
+    } catch (adminError) {
+      console.error('登录失败', adminError)
+      ElMessage.error(adminError.response?.data?.error || '登录失败，请检查用户名和密码')
+    }
   } finally {
     loading.value = false
   }

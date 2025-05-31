@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/zzhtl/go-mountain/internal/article"
+	"github.com/zzhtl/go-mountain/internal/backend_user"
 	"github.com/zzhtl/go-mountain/internal/column"
 	"github.com/zzhtl/go-mountain/internal/config"
 	"github.com/zzhtl/go-mountain/internal/handler"
@@ -64,13 +65,24 @@ func NewServer(dbConn *sqlx.DB, cfg *config.Config) *Server {
 	articleHandler := article.NewHandler(dbConn)
 	articleHandler.RegisterMPRoutes(mpArticle)
 
-	// 后台管理登录 API
+	// 后台管理登录 API（原admin登录）
 	auth := apiGroup.Group("/admin/auth")
 	adminRoutes.RegisterAuthRoutes(auth, cfg)
 
-	// 后台用户管理 API
+	// 小程序用户管理 API
 	adminUsers := apiGroup.Group("/admin/users")
 	adminRoutes.RegisterUserRoutes(adminUsers, mpHandler, cfg.JWT.Secret)
+
+	// 后台用户管理系统
+	backendUserHandler := backend_user.NewHandler(dbConn, cfg.JWT)
+
+	// 后台用户认证 API
+	backendAuth := apiGroup.Group("/admin/backend-auth")
+	adminRoutes.RegisterBackendAuthRoutes(backendAuth, backendUserHandler, cfg.JWT.Secret)
+
+	// 后台用户管理 API
+	backendUsers := apiGroup.Group("/admin/backend-users")
+	adminRoutes.RegisterBackendUserRoutes(backendUsers, backendUserHandler, cfg.JWT.Secret)
 
 	// 后台栏目管理 API（需要JWT认证）
 	adminColumns := apiGroup.Group("/admin/columns")

@@ -3,7 +3,22 @@
     <el-header>
       <div class="header-content">
         <h1>远山公益后台管理系统</h1>
-        <el-button @click="logout">退出登录</el-button>
+        <div class="header-right">
+          <span class="user-info" v-if="userInfo">
+            欢迎，{{ userInfo.username }} ({{ userInfo.role === 'admin' ? '管理员' : '编辑员' }})
+          </span>
+          <el-dropdown @command="handleCommand">
+            <el-button text>
+              <el-icon><Setting /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item command="changePassword">修改密码</el-dropdown-item>
+                <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
       </div>
     </el-header>
     
@@ -26,6 +41,11 @@
           
           <el-menu-item index="/admin/users">
             <el-icon><User /></el-icon>
+            <span>小程序用户</span>
+          </el-menu-item>
+          
+          <el-menu-item index="/admin/backend-users" v-if="isAdmin">
+            <el-icon><UserFilled /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
         </el-menu>
@@ -39,24 +59,48 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Setting, Document, Menu, User, UserFilled } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const router = useRouter()
 const route = useRoute()
+const userInfo = ref(null)
 
 const activeMenu = computed(() => {
   const path = route.path
   if (path.startsWith('/admin/articles')) return '/admin/articles'
   if (path.startsWith('/admin/columns')) return '/admin/columns'
-  if (path.startsWith('/admin/users')) return '/admin/users'
+  if (path.startsWith('/admin/users') && !path.includes('backend')) return '/admin/users'
+  if (path.startsWith('/admin/backend-users')) return '/admin/backend-users'
   return path
 })
 
+const isAdmin = computed(() => {
+  return userInfo.value?.role === 'admin'
+})
+
+onMounted(() => {
+  // 获取用户信息
+  const savedUserInfo = localStorage.getItem('userInfo')
+  if (savedUserInfo) {
+    userInfo.value = JSON.parse(savedUserInfo)
+  }
+})
+
+const handleCommand = (command) => {
+  if (command === 'logout') {
+    logout()
+  } else if (command === 'changePassword') {
+    router.push('/admin/change-password')
+  }
+}
+
 const logout = () => {
   localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
   delete axios.defaults.headers.common['Authorization']
   ElMessage.success('退出成功')
   router.push('/login')
@@ -88,6 +132,17 @@ const logout = () => {
 .header-content h1 {
   margin: 0;
   font-size: 20px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.user-info {
+  color: #ccc;
+  font-size: 14px;
 }
 
 .el-container {

@@ -6,6 +6,8 @@ import UserDetail from '../views/UserDetail.vue'
 import ColumnList from '../views/ColumnList.vue'
 import ArticleList from '../views/ArticleList.vue'
 import ArticleEdit from '../views/ArticleEdit.vue'
+import BackendUserList from '../views/BackendUserList.vue'
+import ChangePassword from '../views/ChangePassword.vue'
 
 const routes = [
   { 
@@ -45,6 +47,14 @@ const routes = [
       {
         path: 'articles/edit/:id',
         component: ArticleEdit
+      },
+      {
+        path: 'backend-users',
+        component: BackendUserList
+      },
+      {
+        path: 'change-password',
+        component: ChangePassword
       }
     ]
   }

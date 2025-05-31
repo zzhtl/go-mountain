@@ -33,6 +33,20 @@ func JWTAuth(secret string) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
+
+		// 解析JWT中的用户信息
+		if claims, ok := token.Claims.(jwt.MapClaims); ok {
+			if userID, exists := claims["user_id"]; exists {
+				c.Set("user_id", userID)
+			}
+			if username, exists := claims["username"]; exists {
+				c.Set("username", username)
+			}
+			if role, exists := claims["role"]; exists {
+				c.Set("role", role)
+			}
+		}
+
 		c.Next()
 	}
 }

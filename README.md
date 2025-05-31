@@ -78,7 +78,17 @@ cd frontend-mp
 
 ### 管理后台
 
-- **用户管理**：查看、编辑、删除用户信息
+- **小程序用户管理**：查看、编辑、删除小程序用户信息
+- **用户管理**（仅管理员可见）：
+  - 创建后台用户（管理员/编辑员）
+  - 自动生成随机密码
+  - 用户状态管理（启用/禁用）
+  - 重置用户密码
+  - 权限控制（只有管理员可以管理用户）
+- **用户认证**：
+  - 后台用户登录系统
+  - 密码修改功能
+  - JWT令牌认证
 - **栏目管理**：创建、编辑、删除文章栏目
 - **文章管理**：
   - 富文本编辑器支持图片和视频上传
@@ -95,16 +105,28 @@ cd frontend-mp
 
 ### 认证相关
 
-- `POST /api/admin/auth/login` - 管理员登录，返回JWT令牌
+- `POST /api/admin/auth/login` - 管理员登录（原有admin），返回JWT令牌
+- `POST /api/admin/backend-auth/login` - 后台用户登录，返回JWT令牌
+- `PUT /api/admin/backend-auth/change-password` - 后台用户修改密码
 - `POST /api/mp/login` - 微信小程序登录，获取openid
 - `POST /api/mp/register` - 小程序用户注册绑定手机号
 
-### 用户管理
+### 小程序用户管理
 
-- `GET /api/admin/users` - 获取用户列表
-- `GET /api/admin/users/:id` - 获取用户详情
-- `PUT /api/admin/users/:id` - 更新用户信息
-- `DELETE /api/admin/users/:id` - 删除用户
+- `GET /api/admin/users` - 获取小程序用户列表
+- `GET /api/admin/users/:id` - 获取小程序用户详情
+- `PUT /api/admin/users/:id` - 更新小程序用户信息
+- `DELETE /api/admin/users/:id` - 删除小程序用户
+
+### 后台用户管理
+
+- `GET /api/admin/backend-users` - 获取后台用户列表
+- `POST /api/admin/backend-users` - 创建后台用户（自动生成密码）
+- `GET /api/admin/backend-users/:id` - 获取后台用户详情
+- `PUT /api/admin/backend-users/:id` - 更新后台用户信息
+- `PUT /api/admin/backend-users/:id/status` - 更新后台用户状态
+- `PUT /api/admin/backend-users/:id/reset-password` - 重置后台用户密码
+- `DELETE /api/admin/backend-users/:id` - 删除后台用户
 
 ### 栏目管理
 
