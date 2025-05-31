@@ -49,6 +49,23 @@
         </el-form-item>
         
         <el-form-item label="文章内容">
+          <div class="editor-tip">
+            <el-alert
+              title="图片调整提示"
+              type="info"
+              :closable="false"
+              show-icon
+            >
+              <template #default>
+                <div>上传图片后，可以通过以下方式调整图片尺寸：</div>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                  <li>双击图片打开调整对话框</li>
+                  <li>右键点击图片选择调整</li>
+                  <li>选中图片后按Enter键</li>
+                </ul>
+              </template>
+            </el-alert>
+          </div>
           <div class="editor-container">
             <QuillEditor
               ref="editorRef"
@@ -198,13 +215,13 @@ const editorToolbar = [
 // 创建图片处理器
 const imageHandler = createImageUploadHandler(uploadImageHandler)
 
-// 计算图片样式
+// 计算图片样式 - 只用于预览，不影响实际对齐
 const imageStyle = computed(() => ({
   width: `${imageConfig.value.width}px`,
   height: `${imageConfig.value.height}px`,
   display: 'block',
-  margin: imageConfig.value.align === 'center' ? '0 auto' : 
-           imageConfig.value.align === 'right' ? '0 0 0 auto' : '0'
+  maxWidth: '100%',
+  objectFit: 'contain'
 }))
 
 // 编辑器事件处理
@@ -246,7 +263,27 @@ const onEditorReady = (quill) => {
   // 添加图片双击事件监听，实现图片调整功能
   const editorElement = quill.root
   editorElement.addEventListener('dblclick', (e) => {
+    console.log('双击事件触发，目标元素:', e.target.tagName, e.target)
     if (e.target.tagName === 'IMG') {
+      console.log('检测到图片双击，打开调整对话框')
+      e.preventDefault()
+      e.stopPropagation()
+      openImageAdjustDialog(e.target, quill)
+    }
+  })
+  
+  // 添加单击事件作为备选方案，长按或右键点击
+  editorElement.addEventListener('contextmenu', (e) => {
+    if (e.target.tagName === 'IMG') {
+      e.preventDefault()
+      openImageAdjustDialog(e.target, quill)
+    }
+  })
+  
+  // 添加键盘事件，选中图片后按Enter键调整
+  editorElement.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName === 'IMG') {
+      e.preventDefault()
       openImageAdjustDialog(e.target, quill)
     }
   })
@@ -308,13 +345,25 @@ const onEditorReady = (quill) => {
 
 // 打开图片调整对话框
 const openImageAdjustDialog = (imgElement, quill) => {
+  console.log('打开图片调整对话框，图片元素:', imgElement)
+  console.log('图片src:', imgElement.src)
+  console.log('图片尺寸:', imgElement.width, 'x', imgElement.height)
+  
   currentImageSrc.value = imgElement.src
   currentImageBlot.value = { element: imgElement, quill }
   
   // 获取当前图片尺寸
   const rect = imgElement.getBoundingClientRect()
-  imageConfig.value.width = Math.round(imgElement.width || rect.width || 400)
-  imageConfig.value.height = Math.round(imgElement.height || rect.height || 300)
+  const computedStyle = window.getComputedStyle(imgElement)
+  
+  // 优先使用元素的显示尺寸
+  let width = parseInt(computedStyle.width) || imgElement.offsetWidth || imgElement.width || rect.width || 400
+  let height = parseInt(computedStyle.height) || imgElement.offsetHeight || imgElement.height || rect.height || 300
+  
+  imageConfig.value.width = Math.round(width)
+  imageConfig.value.height = Math.round(height)
+  
+  console.log('设置的宽度高度:', imageConfig.value.width, 'x', imageConfig.value.height)
   
   // 计算原始比例
   if (imgElement.naturalWidth && imgElement.naturalHeight) {
@@ -323,17 +372,47 @@ const openImageAdjustDialog = (imgElement, quill) => {
     imageConfig.value.originalRatio = imageConfig.value.width / imageConfig.value.height
   }
   
-  // 获取对齐方式
-  const style = imgElement.style
-  if (style.marginLeft === 'auto' && style.marginRight === 'auto') {
+  console.log('原始比例:', imageConfig.value.originalRatio)
+  
+  // 获取对齐方式：优先检查类名，然后检查样式
+  console.log('图片样式信息:', {
+    className: imgElement.className,
+    dataAlign: imgElement.getAttribute('data-align'),
+    styleFloat: imgElement.style.float,
+    computedFloat: computedStyle.float,
+    styleMargin: imgElement.style.margin,
+    styleMarginLeft: imgElement.style.marginLeft,
+    styleMarginRight: imgElement.style.marginRight,
+    computedMarginLeft: computedStyle.marginLeft,
+    computedMarginRight: computedStyle.marginRight
+  })
+  
+  // 优先根据类名判断对齐方式
+  if (imgElement.classList.contains('image-center')) {
     imageConfig.value.align = 'center'
-  } else if (style.marginLeft === 'auto') {
+  } else if (imgElement.classList.contains('image-right')) {
     imageConfig.value.align = 'right'
+  } else if (imgElement.classList.contains('image-left')) {
+    imageConfig.value.align = 'left'
+  } else if (imgElement.getAttribute('data-align')) {
+    // 根据data属性判断
+    imageConfig.value.align = imgElement.getAttribute('data-align')
+  } else if (computedStyle.float === 'right' || imgElement.style.float === 'right') {
+    imageConfig.value.align = 'right'
+  } else if (computedStyle.float === 'left' || imgElement.style.float === 'left') {
+    imageConfig.value.align = 'left'
+  } else if ((computedStyle.marginLeft === 'auto' && computedStyle.marginRight === 'auto') ||
+             (imgElement.style.marginLeft === 'auto' && imgElement.style.marginRight === 'auto')) {
+    imageConfig.value.align = 'center'
   } else {
+    // 默认为左对齐
     imageConfig.value.align = 'left'
   }
   
+  console.log('检测到的对齐方式:', imageConfig.value.align)
+  
   showImageDialog.value = true
+  ElMessage.info('双击图片可调整尺寸，右键图片也可以调整')
 }
 
 // 更新图片样式预览
@@ -354,27 +433,119 @@ const toggleKeepRatio = () => {
 // 确认图片调整
 const confirmImageAdjust = () => {
   if (currentImageBlot.value) {
-    const { element } = currentImageBlot.value
+    const { element, quill } = currentImageBlot.value
     
-    // 应用样式到实际图片元素
+    console.log('应用图片调整，新尺寸:', imageConfig.value.width, 'x', imageConfig.value.height)
+    console.log('对齐方式:', imageConfig.value.align)
+    console.log('图片当前DOM结构:', element.parentElement)
+    
+    // 设置图片基础样式
     element.style.width = `${imageConfig.value.width}px`
     element.style.height = `${imageConfig.value.height}px`
-    element.style.display = 'block'
+    element.style.maxWidth = 'none'
+    element.style.objectFit = 'contain'
+    element.setAttribute('width', imageConfig.value.width)
+    element.setAttribute('height', imageConfig.value.height)
     
-    // 设置对齐方式
-    switch (imageConfig.value.align) {
-      case 'center':
-        element.style.margin = '10px auto'
-        break
-      case 'right':
-        element.style.margin = '10px 0 10px auto'
-        break
-      default:
-        element.style.margin = '10px auto 10px 0'
+    // 彻底清除所有现有的对齐样式和定位样式
+    element.style.margin = ''
+    element.style.marginLeft = ''
+    element.style.marginRight = ''
+    element.style.marginTop = ''
+    element.style.marginBottom = ''
+    element.style.float = ''
+    element.style.cssFloat = ''
+    element.style.styleFloat = ''
+    element.style.display = ''
+    element.style.position = ''
+    element.style.left = ''
+    element.style.right = ''
+    element.style.top = ''
+    element.style.bottom = ''
+    element.style.transform = ''
+    element.style.textAlign = ''
+    element.className = '' // 清除所有类名
+    element.removeAttribute('data-align') // 清除对齐属性
+    
+    // 处理父元素样式
+    const parent = element.parentElement
+    if (parent) {
+      parent.style.textAlign = ''
+      parent.style.margin = ''
+      parent.style.marginLeft = ''
+      parent.style.marginRight = ''
+      parent.style.display = ''
+      parent.style.float = ''
+      parent.style.cssFloat = ''
+      parent.style.styleFloat = ''
+      parent.className = parent.className.replace(/ql-align-\w+/g, '')
     }
     
+    // 彻底清除所有样式，确保对齐切换正常
+    console.log(`应用 ${imageConfig.value.align} 对齐`)
+    
+    // 1. 清除所有对齐类名
+    element.className = element.className.replace(/image-(left|center|right)/g, '').trim()
+    
+    // 2. 清除所有可能影响对齐的内联样式
+    element.style.float = ''
+    element.style.cssFloat = ''
+    element.style.styleFloat = ''
+    element.style.margin = ''
+    element.style.marginLeft = ''
+    element.style.marginRight = ''
+    element.style.display = ''
+    element.style.position = ''
+    element.style.left = ''
+    element.style.right = ''
+    element.style.transform = ''
+    
+    // 3. 强制刷新DOM
+    element.offsetHeight // 触发重排
+    
+    // 4. 应用新的对齐方式
+    if (imageConfig.value.align === 'center') {
+      element.className += ' image-center'
+      console.log('✅ 设置为居中')
+    } else if (imageConfig.value.align === 'right') {
+      element.className += ' image-right'
+      console.log('✅ 设置为右对齐')
+    } else {
+      element.className += ' image-left'
+      console.log('✅ 设置为左对齐')
+    }
+    
+    // 5. 记录对齐方式
+    element.setAttribute('data-align', imageConfig.value.align)
+    
+    // 存储对齐信息到data属性
+    element.setAttribute('data-align', imageConfig.value.align)
+    element.setAttribute('data-custom-size', 'true')
+    
+    // 强制刷新编辑器
+    setTimeout(() => {
+      if (quill) {
+        quill.update('user')
+        
+        // 验证样式应用结果
+        const finalStyles = window.getComputedStyle(element)
+        console.log('最终计算样式:', {
+          width: finalStyles.width,
+          height: finalStyles.height,
+          margin: finalStyles.margin,
+          marginLeft: finalStyles.marginLeft,
+          marginRight: finalStyles.marginRight,
+          display: finalStyles.display,
+          float: finalStyles.float,
+          textAlign: parent ? window.getComputedStyle(parent).textAlign : 'none'
+        })
+      }
+    }, 100)
+    
     showImageDialog.value = false
-    ElMessage.success('图片调整成功')
+    ElMessage.success(`图片调整成功！新尺寸: ${imageConfig.value.width}x${imageConfig.value.height}，对齐: ${imageConfig.value.align}`)
+  } else {
+    ElMessage.error('未找到要调整的图片元素')
   }
 }
 
@@ -561,10 +732,8 @@ onMounted(() => {
   margin: 15px auto;
 }
 
-/* 确保所有媒体元素不超出容器 */
+/* 基础图片样式 */
 :deep(.ql-editor img) {
-  max-width: 100%;
-  height: auto;
   border-radius: 4px;
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   cursor: pointer;
@@ -573,6 +742,76 @@ onMounted(() => {
 
 :deep(.ql-editor img:hover) {
   transform: scale(1.02);
+  outline: 2px solid #409eff;
+}
+
+/* 图片被选中时的样式 */
+:deep(.ql-editor img:focus) {
+  outline: 3px solid #409eff;
+  outline-offset: 2px;
+}
+
+/* 自定义尺寸的图片基础样式 */
+:deep(.ql-editor img[data-custom-size="true"]) {
+  max-width: none !important;
+  height: auto !important;
+}
+
+/* 左对齐图片 - 强制覆盖所有其他样式 */
+:deep(.ql-editor img.image-left) {
+  display: block !important;
+  float: left !important;
+  margin: 10px 10px 10px 0 !important;
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 右对齐图片 - 强制覆盖所有其他样式 */
+:deep(.ql-editor img.image-right) {
+  display: block !important;
+  float: right !important;
+  margin: 10px 0 10px 10px !important;
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 居中图片 - 强制覆盖所有其他样式 */
+:deep(.ql-editor img.image-center) {
+  display: block !important;
+  float: none !important;
+  margin: 10px auto !important;
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 通用图片容器样式 */
+:deep(.ql-editor p) {
+  margin: 10px 0;
+  min-height: 1em;
+}
+
+/* 清除浮动，防止布局问题 */
+:deep(.ql-editor p:after) {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+
+
+/* 图片调整提示样式 */
+.editor-tip {
+  margin-bottom: 10px;
+}
+
+.editor-tip .el-alert {
+  border-radius: 6px;
 }
 
 :deep(.ql-editor video) {
