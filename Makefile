@@ -6,6 +6,8 @@ help:
 	@echo "  run              - 运行服务器"
 	@echo "  build            - 构建项目"
 	@echo "  create-admin     - 创建初始管理员用户"
+	@echo "  init-permissions - 初始化角色权限"
+	@echo "  init-all         - 完整初始化（管理员+权限）"
 	@echo "  frontend-admin   - 构建管理后台前端"
 	@echo "  frontend-mp      - 构建小程序前端"
 	@echo "  clean            - 清理构建文件"
@@ -24,6 +26,15 @@ build:
 create-admin:
 	@echo "创建初始管理员用户..."
 	go run cmd/create_admin/main.go
+
+# 初始化角色权限
+init-permissions:
+	@echo "初始化角色权限..."
+	go run cmd/init_permissions/main.go
+
+# 完整初始化（创建管理员 + 初始化权限）
+init-all: create-admin init-permissions
+	@echo "系统初始化完成！"
 
 # 构建管理后台前端
 frontend-admin:

@@ -19,10 +19,10 @@
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="150" />
         <el-table-column prop="email" label="邮箱" width="200" />
-        <el-table-column prop="role" label="角色" width="100">
+        <el-table-column prop="role_display" label="角色" width="150">
           <template #default="scope">
-            <el-tag :type="scope.row.role === 'admin' ? 'danger' : 'primary'">
-              {{ scope.row.role === 'admin' ? '管理员' : '编辑员' }}
+            <el-tag type="primary">
+              {{ scope.row.role_display || scope.row.role_name || '未分配' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -88,10 +88,14 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="createForm.email" placeholder="请输入邮箱" />
         </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="createForm.role" placeholder="请选择角色">
-            <el-option label="管理员" value="admin" />
-            <el-option label="编辑员" value="editor" />
+        <el-form-item label="角色" prop="role_id">
+          <el-select v-model="createForm.role_id" placeholder="请选择角色">
+            <el-option 
+              v-for="role in roles" 
+              :key="role.id" 
+              :label="role.display_name" 
+              :value="role.id" 
+            />
           </el-select>
         </el-form-item>
       </el-form>
@@ -110,10 +114,14 @@
         <el-form-item label="邮箱" prop="email">
           <el-input v-model="editForm.email" placeholder="请输入邮箱" />
         </el-form-item>
-        <el-form-item label="角色" prop="role">
-          <el-select v-model="editForm.role" placeholder="请选择角色">
-            <el-option label="管理员" value="admin" />
-            <el-option label="编辑员" value="editor" />
+        <el-form-item label="角色" prop="role_id">
+          <el-select v-model="editForm.role_id" placeholder="请选择角色">
+            <el-option 
+              v-for="role in roles" 
+              :key="role.id" 
+              :label="role.display_name" 
+              :value="role.id" 
+            />
           </el-select>
         </el-form-item>
       </el-form>
@@ -163,6 +171,7 @@ const createLoading = ref(false)
 const editLoading = ref(false)
 const resetLoading = ref(false)
 const users = ref([])
+const roles = ref([])
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const showPasswordDialog = ref(false)
@@ -178,14 +187,14 @@ const pagination = ref({
 const createForm = ref({
   username: '',
   email: '',
-  role: 'editor'
+  role_id: null
 })
 
 const editForm = ref({
   id: null,
   username: '',
   email: '',
-  role: 'editor'
+  role_id: null
 })
 
 const createFormRef = ref()
@@ -200,7 +209,7 @@ const createRules = {
     { required: true, message: '请输入邮箱地址', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }
   ],
-  role: [
+  role_id: [
     { required: true, message: '请选择角色', trigger: 'change' }
   ]
 }
@@ -217,6 +226,7 @@ const canManageUsers = computed(() => {
 onMounted(() => {
   fetchUsers()
   getCurrentUser()
+  fetchRoles()
 })
 
 const getCurrentUser = () => {
@@ -224,6 +234,15 @@ const getCurrentUser = () => {
   const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}')
   currentUserId.value = userInfo.id
   currentUserRole.value = userInfo.role
+}
+
+const fetchRoles = async () => {
+  try {
+    const response = await axios.get('/api/admin/roles')
+    roles.value = response.data.list || []
+  } catch (error) {
+    console.error('获取角色列表失败:', error)
+  }
 }
 
 const fetchUsers = async () => {
@@ -301,7 +320,7 @@ const updateUser = async () => {
     await axios.put(`/api/admin/backend-users/${editForm.value.id}`, {
       username: editForm.value.username,
       email: editForm.value.email,
-      role: editForm.value.role
+      role_id: editForm.value.role_id
     })
     ElMessage.success('用户更新成功')
     showEditDialog.value = false

@@ -8,6 +8,8 @@ import ArticleList from '../views/ArticleList.vue'
 import ArticleEdit from '../views/ArticleEdit.vue'
 import BackendUserList from '../views/BackendUserList.vue'
 import ChangePassword from '../views/ChangePassword.vue'
+import RoleList from '../views/RoleList.vue'
+import MenuList from '../views/MenuList.vue'
 
 const routes = [
   { 
@@ -51,6 +53,14 @@ const routes = [
       {
         path: 'backend-users',
         component: BackendUserList
+      },
+      {
+        path: 'roles',
+        component: RoleList
+      },
+      {
+        path: 'menus',
+        component: MenuList
       },
       {
         path: 'change-password',

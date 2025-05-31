@@ -73,16 +73,17 @@ func NewServer(dbConn *sqlx.DB, cfg *config.Config) *Server {
 	adminUsers := apiGroup.Group("/admin/users")
 	adminRoutes.RegisterUserRoutes(adminUsers, mpHandler, cfg.JWT.Secret)
 
-	// 后台用户管理系统
-	backendUserHandler := backend_user.NewHandler(dbConn, cfg.JWT)
+	// 后台用户管理系统（使用V2版本支持动态角色）
+	backendUserHandler := backend_user.NewHandlerV2(dbConn, cfg.JWT)
 
 	// 后台用户认证 API
 	backendAuth := apiGroup.Group("/admin/backend-auth")
-	adminRoutes.RegisterBackendAuthRoutes(backendAuth, backendUserHandler, cfg.JWT.Secret)
+	backendUserHandler.RegisterAuthRoutes(backendAuth)
 
 	// 后台用户管理 API
 	backendUsers := apiGroup.Group("/admin/backend-users")
-	adminRoutes.RegisterBackendUserRoutes(backendUsers, backendUserHandler, cfg.JWT.Secret)
+	backendUsers.Use(middleware.JWTAuth(cfg.JWT.Secret))
+	backendUserHandler.RegisterAdminRoutes(backendUsers)
 
 	// 后台栏目管理 API（需要JWT认证）
 	adminColumns := apiGroup.Group("/admin/columns")
@@ -99,6 +100,16 @@ func NewServer(dbConn *sqlx.DB, cfg *config.Config) *Server {
 	adminUpload.Use(middleware.JWTAuth(cfg.JWT.Secret))
 	uploadHandler := upload.NewHandler()
 	uploadHandler.RegisterRoutes(adminUpload)
+
+	// 角色管理 API（需要JWT认证）
+	adminRoles := apiGroup.Group("/admin/roles")
+	adminRoles.Use(middleware.JWTAuth(cfg.JWT.Secret))
+	adminRoutes.RegisterRoleRoutes(adminRoles, dbConn)
+
+	// 菜单管理 API（需要JWT认证）
+	adminMenus := apiGroup.Group("/admin/menus")
+	adminMenus.Use(middleware.JWTAuth(cfg.JWT.Secret))
+	adminRoutes.RegisterMenuRoutes(adminMenus, dbConn)
 
 	// Admin UI 静态文件服务 - 使用不同的路径避免与API冲突
 	engine.StaticFS("/web", gin.Dir("frontend-admin/dist", false))
