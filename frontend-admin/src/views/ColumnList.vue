@@ -51,7 +51,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import { columnApi } from '../api'
 
 const columns = ref([])
 const showDialog = ref(false)
@@ -65,8 +65,7 @@ const form = ref({
 // 获取栏目列表
 const loadColumns = async () => {
   try {
-    const res = await axios.get('/api/admin/columns/')
-    columns.value = res.data
+    columns.value = await columnApi.list()
   } catch (error) {
     ElMessage.error('加载栏目失败')
   }
@@ -81,10 +80,10 @@ const saveColumn = async () => {
   
   try {
     if (editingColumn.value) {
-      await axios.put(`/api/admin/columns/${editingColumn.value.id}`, form.value)
+      await columnApi.update(editingColumn.value.id, form.value)
       ElMessage.success('更新成功')
     } else {
-      await axios.post('/api/admin/columns/', form.value)
+      await columnApi.create(form.value)
       ElMessage.success('创建成功')
     }
     showDialog.value = false
@@ -114,7 +113,7 @@ const deleteColumn = async (row) => {
       type: 'warning'
     })
     
-    await axios.delete(`/api/admin/columns/${row.id}`)
+    await columnApi.delete(row.id)
     ElMessage.success('删除成功')
     loadColumns()
   } catch (error) {

@@ -164,7 +164,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { backendUserApi, roleApi } from '../api'
 
 const loading = ref(false)
 const createLoading = ref(false)
@@ -238,8 +238,8 @@ const getCurrentUser = () => {
 
 const fetchRoles = async () => {
   try {
-    const response = await axios.get('/api/admin/roles')
-    roles.value = response.data.list || []
+    const data = await roleApi.list()
+    roles.value = data.list || []
   } catch (error) {
     console.error('获取角色列表失败:', error)
   }
@@ -248,14 +248,12 @@ const fetchRoles = async () => {
 const fetchUsers = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/admin/backend-users', {
-      params: {
-        page: pagination.value.page,
-        page_size: pagination.value.pageSize
-      }
+    const data = await backendUserApi.list({
+      page: pagination.value.page,
+      page_size: pagination.value.pageSize
     })
-    users.value = response.data.list || []
-    pagination.value.total = response.data.total || 0
+    users.value = data.list || []
+    pagination.value.total = data.total || 0
   } catch (error) {
     ElMessage.error('获取用户列表失败')
   } finally {
@@ -271,13 +269,13 @@ const createUser = async () => {
 
   createLoading.value = true
   try {
-    const response = await axios.post('/api/admin/backend-users', createForm.value)
+    const data = await backendUserApi.create(createForm.value)
     ElMessage.success('用户创建成功')
     showCreateDialog.value = false
-    
+
     // 显示生成的密码
     ElMessageBox.alert(
-      `用户创建成功！\n初始密码：${response.data.password}\n请及时告知用户并要求其修改密码。`,
+      `用户创建成功！\n初始密码：${data.password}\n请及时告知用户并要求其修改密码。`,
       '创建成功',
       {
         confirmButtonText: '确定',
@@ -317,7 +315,7 @@ const updateUser = async () => {
 
   editLoading.value = true
   try {
-    await axios.put(`/api/admin/backend-users/${editForm.value.id}`, {
+    await backendUserApi.update(editForm.value.id, {
       username: editForm.value.username,
       email: editForm.value.email,
       role_id: editForm.value.role_id
@@ -347,9 +345,7 @@ const toggleUserStatus = async (user) => {
       }
     )
     
-    await axios.put(`/api/admin/backend-users/${user.id}/status`, {
-      status: newStatus
-    })
+    await backendUserApi.updateStatus(user.id, { status: newStatus })
     ElMessage.success(`${action}成功`)
     fetchUsers()
   } catch (error) {
@@ -368,8 +364,8 @@ const resetPassword = (user) => {
 const confirmResetPassword = async () => {
   resetLoading.value = true
   try {
-    const response = await axios.put(`/api/admin/backend-users/${selectedUser.value.id}/reset-password`)
-    newPassword.value = response.data.password
+    const data = await backendUserApi.resetPassword(selectedUser.value.id)
+    newPassword.value = data.password
     ElMessage.success('密码重置成功')
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '重置密码失败')
@@ -400,7 +396,7 @@ const deleteUser = async (user) => {
       }
     )
     
-    await axios.delete(`/api/admin/backend-users/${user.id}`)
+    await backendUserApi.delete(user.id)
     ElMessage.success('删除成功')
     fetchUsers()
   } catch (error) {

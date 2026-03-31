@@ -48,9 +48,12 @@
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
+import { useUserStore } from '../store/user'
+import { usePermissionStore } from '../store/permission'
+import { resetDynamicRoutes } from '../router'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
 const formRef = ref()
 
@@ -90,19 +93,17 @@ const changePassword = async () => {
 
   loading.value = true
   try {
-    await axios.put('/api/admin/backend-auth/change-password', {
+    await userStore.changePassword({
       old_password: form.value.oldPassword,
       new_password: form.value.newPassword
     })
-    
+
     ElMessage.success('密码修改成功，请重新登录')
-    
-    // 清除登录信息
-    localStorage.removeItem('token')
-    localStorage.removeItem('userInfo')
-    delete axios.defaults.headers.common['Authorization']
-    
-    // 跳转到登录页
+
+    // 清除登录状态
+    userStore.logout()
+    usePermissionStore().reset()
+    resetDynamicRoutes()
     router.push('/login')
   } catch (error) {
     ElMessage.error(error.response?.data?.error || '修改密码失败')

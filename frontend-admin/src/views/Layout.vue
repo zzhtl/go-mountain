@@ -4,8 +4,8 @@
       <div class="header-content">
         <h1>远山公益后台管理系统</h1>
         <div class="header-right">
-          <span class="user-info" v-if="userInfo">
-            欢迎，{{ userInfo.username }} ({{ userInfo.role_display || userInfo.role || '用户' }})
+          <span class="user-info" v-if="userStore.userInfo">
+            欢迎，{{ userStore.username }} ({{ userStore.roleDisplay }})
           </span>
           <el-dropdown @command="handleCommand">
             <el-button text>
@@ -21,7 +21,7 @@
         </div>
       </div>
     </el-header>
-    
+
     <el-container>
       <el-aside width="200px">
         <el-menu
@@ -29,38 +29,32 @@
           router
           class="el-menu-vertical"
         >
-          <el-menu-item index="/admin/articles" v-if="hasMenuAccess('articles')">
-            <el-icon><Document /></el-icon>
-            <span>文章管理</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/columns" v-if="hasMenuAccess('columns')">
-            <el-icon><Menu /></el-icon>
-            <span>栏目管理</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/users" v-if="hasMenuAccess('mp-users')">
-            <el-icon><User /></el-icon>
-            <span>小程序用户</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/backend-users" v-if="hasMenuAccess('backend-users')">
-            <el-icon><UserFilled /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/roles" v-if="hasMenuAccess('roles')">
-            <el-icon><Key /></el-icon>
-            <span>角色管理</span>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/menus" v-if="hasMenuAccess('menus')">
-            <el-icon><Grid /></el-icon>
-            <span>菜单管理</span>
-          </el-menu-item>
+          <template v-for="menu in sidebarMenus" :key="menu.id">
+            <!-- 有子菜单的目录 -->
+            <el-sub-menu v-if="menu.children?.length" :index="'dir-' + menu.id">
+              <template #title>
+                <el-icon><component :is="menu.icon || 'Folder'" /></el-icon>
+                <span>{{ menu.name }}</span>
+              </template>
+              <el-menu-item
+                v-for="child in menu.children.filter(c => c.type === 2)"
+                :key="child.id"
+                :index="child.path"
+              >
+                <el-icon><component :is="child.icon || 'Document'" /></el-icon>
+                <span>{{ child.name }}</span>
+              </el-menu-item>
+            </el-sub-menu>
+
+            <!-- 没有子菜单的直接菜单项 (type=2) -->
+            <el-menu-item v-else-if="menu.type === 2" :index="menu.path">
+              <el-icon><component :is="menu.icon || 'Document'" /></el-icon>
+              <span>{{ menu.name }}</span>
+            </el-menu-item>
+          </template>
         </el-menu>
       </el-aside>
-      
+
       <el-main>
         <router-view />
       </el-main>
@@ -69,67 +63,27 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Setting, Document, Menu, User, UserFilled, Key, Grid } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { Setting } from '@element-plus/icons-vue'
+import { useUserStore } from '../store/user'
+import { usePermissionStore } from '../store/permission'
+import { resetDynamicRoutes } from '../router'
 
 const router = useRouter()
 const route = useRoute()
-const userInfo = ref(null)
-const userMenus = ref([])
+const userStore = useUserStore()
+const permissionStore = usePermissionStore()
+
+// 侧边栏只显示目录(type=1)和菜单(type=2)，不显示按钮权限(type=3)
+const sidebarMenus = computed(() => {
+  return permissionStore.menus.filter(m => m.type === 1 || m.type === 2)
+})
 
 const activeMenu = computed(() => {
-  const path = route.path
-  if (path.startsWith('/admin/articles')) return '/admin/articles'
-  if (path.startsWith('/admin/columns')) return '/admin/columns'
-  if (path.startsWith('/admin/users') && !path.includes('backend')) return '/admin/users'
-  if (path.startsWith('/admin/backend-users')) return '/admin/backend-users'
-  if (path.startsWith('/admin/roles')) return '/admin/roles'
-  if (path.startsWith('/admin/menus')) return '/admin/menus'
-  return path
+  return route.path
 })
-
-const isAdmin = computed(() => {
-  return userInfo.value?.role === 'admin'
-})
-
-// 检查用户是否有指定菜单的访问权限
-const hasMenuAccess = (menuName) => {
-  if (!userMenus.value || userMenus.value.length === 0) {
-    // 如果菜单权限还没加载，先按角色判断（兼容性）
-    return isAdmin.value
-  }
-  
-  // 检查用户菜单中是否包含指定菜单
-  const hasAccess = userMenus.value.some(menu => 
-    menu.name === menuName || 
-    (menu.children && menu.children.some(child => child.name === menuName))
-  )
-  return hasAccess
-}
-
-onMounted(() => {
-  // 获取用户信息
-  const savedUserInfo = localStorage.getItem('userInfo')
-  if (savedUserInfo) {
-    userInfo.value = JSON.parse(savedUserInfo)
-  }
-  
-  // 获取用户菜单权限
-  fetchUserMenus()
-})
-
-const fetchUserMenus = async () => {
-  try {
-    const response = await axios.get('/api/admin/backend-users/current/menus')
-    userMenus.value = response.data || []
-  } catch (error) {
-    console.error('获取用户菜单权限失败:', error)
-    // 如果获取失败，保持原有的角色判断逻辑
-  }
-}
 
 const handleCommand = (command) => {
   if (command === 'logout') {
@@ -140,9 +94,9 @@ const handleCommand = (command) => {
 }
 
 const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('userInfo')
-  delete axios.defaults.headers.common['Authorization']
+  userStore.logout()
+  permissionStore.reset()
+  resetDynamicRoutes()
   ElMessage.success('退出成功')
   router.push('/login')
 }
@@ -208,4 +162,4 @@ const logout = () => {
   height: calc(100vh - 60px);
   overflow-y: auto;
 }
-</style> 
+</style>

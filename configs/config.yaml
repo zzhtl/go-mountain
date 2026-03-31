@@ -4,14 +4,19 @@ server:
 database:
   driver: sqlite3
   dsn: data.db
-
-admin:
-  username: admin
-  password: adminpass
+  # PostgreSQL 示例:
+  # driver: postgres
+  # dsn: "host=localhost user=postgres password=postgres dbname=go_mountain port=5432 sslmode=disable"
 
 jwt:
   secret: your_jwt_secret
 
 wechat:
   app_id: your_app_id
-  secret: your_secret 
+  secret: your_secret
+  # 微信支付配置
+  mch_id: ""
+  mch_api_key: ""
+  mch_serial_no: ""
+  mch_private_key_path: ""
+  notify_url: ""

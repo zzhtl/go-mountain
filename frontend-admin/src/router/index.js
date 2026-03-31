@@ -1,72 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Layout from '../views/Layout.vue'
-import UserList from '../views/UserList.vue'
-import UserDetail from '../views/UserDetail.vue'
-import ColumnList from '../views/ColumnList.vue'
-import ArticleList from '../views/ArticleList.vue'
-import ArticleEdit from '../views/ArticleEdit.vue'
-import BackendUserList from '../views/BackendUserList.vue'
-import ChangePassword from '../views/ChangePassword.vue'
-import RoleList from '../views/RoleList.vue'
-import MenuList from '../views/MenuList.vue'
 
 const routes = [
-  { 
-    path: '/', 
+  {
+    path: '/',
     redirect: '/login'
   },
-  { 
-    path: '/login', 
-    component: Login,
+  {
+    path: '/login',
+    component: () => import('../views/Login.vue'),
     meta: { requiresAuth: false }
   },
   {
     path: '/admin',
-    component: Layout,
+    name: 'admin',
+    component: () => import('../views/Layout.vue'),
     meta: { requiresAuth: true },
-    children: [
-      {
-        path: 'users',
-        component: UserList
-      },
-      {
-        path: 'users/:id',
-        component: UserDetail
-      },
-      {
-        path: 'columns',
-        component: ColumnList
-      },
-      {
-        path: 'articles',
-        component: ArticleList
-      },
-      {
-        path: 'articles/create',
-        component: ArticleEdit
-      },
-      {
-        path: 'articles/edit/:id',
-        component: ArticleEdit
-      },
-      {
-        path: 'backend-users',
-        component: BackendUserList
-      },
-      {
-        path: 'roles',
-        component: RoleList
-      },
-      {
-        path: 'menus',
-        component: MenuList
-      },
-      {
-        path: 'change-password',
-        component: ChangePassword
-      }
-    ]
+    children: [] // 动态路由在登录后注入
   }
 ]
 
@@ -75,24 +24,53 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
-  console.log('路由跳转:', to.path, '来自:', from.path)
+// 标记是否已添加动态路由
+let dynamicRoutesAdded = false
+
+export const resetDynamicRoutes = () => {
+  dynamicRoutesAdded = false
+}
+
+router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('token')
-  
-  // 如果要去登录页面，且已经登录了，重定向到管理页面
+
+  // 去登录页且已登录 → 跳管理页
   if (to.path === '/login' && token) {
-    console.log('已登录，跳转到管理页面')
     return next('/admin/articles')
   }
-  
-  // 如果需要认证的页面，但没有token，跳转到登录页
+
+  // 需要认证但没 token → 跳登录
   if (to.meta.requiresAuth && !token) {
-    console.log('未登录，跳转到登录页面')
     return next('/login')
   }
-  
-  console.log('正常路由导航到:', to.path)
+
+  // 已登录但还没加载动态路由
+  if (token && !dynamicRoutesAdded) {
+    dynamicRoutesAdded = true
+    try {
+      // 延迟导入避免循环依赖
+      const { usePermissionStore } = await import('../store/permission')
+      const permissionStore = usePermissionStore()
+      const routes = await permissionStore.loadMenus()
+
+      // 将动态路由添加到 /admin 下
+      for (const route of routes) {
+        router.addRoute('admin', route)
+      }
+
+      // 给 /admin 路由加 name 以便 addRoute 使用
+      // 重新导航到目标路由（因为此时路由表已更新）
+      return next({ ...to, replace: true })
+    } catch (error) {
+      console.error('加载动态路由失败:', error)
+      localStorage.removeItem('token')
+      localStorage.removeItem('userInfo')
+      dynamicRoutesAdded = false
+      return next('/login')
+    }
+  }
+
   next()
 })
 
-export default router 
+export default router

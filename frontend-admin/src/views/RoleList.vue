@@ -137,7 +137,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { roleApi, menuApi } from '../api'
 
 const loading = ref(false)
 const createLoading = ref(false)
@@ -197,14 +197,12 @@ onMounted(() => {
 const fetchRoles = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/admin/roles', {
-      params: {
-        page: pagination.value.page,
-        page_size: pagination.value.pageSize
-      }
+    const data = await roleApi.list({
+      page: pagination.value.page,
+      page_size: pagination.value.pageSize
     })
-    roles.value = response.data.list || []
-    pagination.value.total = response.data.total || 0
+    roles.value = data.list || []
+    pagination.value.total = data.total || 0
   } catch (error) {
     ElMessage.error('获取角色列表失败')
   } finally {
@@ -214,8 +212,7 @@ const fetchRoles = async () => {
 
 const fetchMenuTree = async () => {
   try {
-    const response = await axios.get('/api/admin/menus/tree')
-    menuTree.value = response.data || []
+    menuTree.value = await menuApi.tree() || []
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
   }
@@ -229,7 +226,7 @@ const createRole = async () => {
 
   createLoading.value = true
   try {
-    await axios.post('/api/admin/roles', createForm.value)
+    await roleApi.create(createForm.value)
     ElMessage.success('角色创建成功')
     showCreateDialog.value = false
     
@@ -265,7 +262,7 @@ const updateRole = async () => {
 
   editLoading.value = true
   try {
-    await axios.put(`/api/admin/roles/${editForm.value.id}`, {
+    await roleApi.update(editForm.value.id, {
       name: editForm.value.name,
       display_name: editForm.value.display_name,
       description: editForm.value.description
@@ -295,9 +292,7 @@ const toggleRoleStatus = async (role) => {
       }
     )
     
-    await axios.put(`/api/admin/roles/${role.id}/status`, {
-      status: newStatus
-    })
+    await roleApi.updateStatus(role.id, { status: newStatus })
     ElMessage.success(`${action}成功`)
     fetchRoles()
   } catch (error) {
@@ -319,7 +314,7 @@ const deleteRole = async (role) => {
       }
     )
     
-    await axios.delete(`/api/admin/roles/${role.id}`)
+    await roleApi.delete(role.id)
     ElMessage.success('删除成功')
     fetchRoles()
   } catch (error) {
@@ -335,8 +330,8 @@ const managePermissions = async (role) => {
   
   // 获取当前角色的菜单权限
   try {
-    const response = await axios.get(`/api/admin/roles/${role.id}/menus`)
-    checkedMenus.value = response.data.menu_ids || []
+    const data = await roleApi.getMenus(role.id)
+    checkedMenus.value = data.menu_ids || []
   } catch (error) {
     ElMessage.error('获取角色权限失败')
   }
@@ -351,9 +346,7 @@ const savePermissions = async () => {
   
   permissionLoading.value = true
   try {
-    await axios.put(`/api/admin/roles/${selectedRole.value.id}/menus`, {
-      menu_ids: allCheckedKeys
-    })
+    await roleApi.updateMenus(selectedRole.value.id, { menu_ids: allCheckedKeys })
     ElMessage.success('权限保存成功')
     showPermissionDialog.value = false
   } catch (error) {

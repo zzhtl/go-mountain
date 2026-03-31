@@ -2,41 +2,61 @@ package db
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
-	_ "github.com/mattn/go-sqlite3"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+
 	"github.com/zzhtl/go-mountain/internal/config"
 )
 
-// Init 根据配置初始化数据库连接
-func Init(cfg config.DatabaseConfig) (*sqlx.DB, error) {
-	var (
-		driver = cfg.Driver
-		dsn    = cfg.DSN
-		db     *sqlx.DB
-		err    error
+// Init 根据配置初始化 GORM 数据库连接
+func Init(cfg config.DatabaseConfig) (*gorm.DB, error) {
+	var dialector gorm.Dialector
+
+	switch cfg.Driver {
+	case "sqlite3", "sqlite":
+		dialector = sqlite.Open(cfg.DSN)
+	case "postgres", "postgresql":
+		dialector = postgres.Open(cfg.DSN)
+	default:
+		return nil, fmt.Errorf("不支持的数据库驱动: %s", cfg.Driver)
+	}
+
+	gormLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			SlowThreshold:             200 * time.Millisecond,
+			LogLevel:                  logger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  true,
+		},
 	)
 
-	switch driver {
-	case "sqlite3":
-		db, err = sqlx.Open("sqlite3", dsn)
-	case "postgres":
-		db, err = sqlx.Open("postgres", dsn)
-	case "mysql":
-		db, err = sqlx.Open("mysql", dsn)
-	default:
-		return nil, fmt.Errorf("unsupported database driver: %s", driver)
+	db, err := gorm.Open(dialector, &gorm.Config{
+		Logger:                                   gormLogger,
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("连接数据库失败: %w", err)
 	}
 
+	sqlDB, err := db.DB()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("获取底层数据库连接失败: %w", err)
 	}
-	// 校验连接
-	if err = db.Ping(); err != nil {
-		return nil, err
+
+	sqlDB.SetMaxIdleConns(10)
+	sqlDB.SetMaxOpenConns(100)
+	sqlDB.SetConnMaxLifetime(time.Hour)
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("数据库连接检测失败: %w", err)
 	}
-	// 可根据需要设置连接池等参数
+
 	return db, nil
 }

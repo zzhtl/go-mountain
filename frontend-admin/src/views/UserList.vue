@@ -28,17 +28,17 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { userApi } from '../api'
 
 const users = ref([])
 const error = ref('')
 
 onMounted(async () => {
   try {
-    const res = await axios.get('/api/admin/users')
-    users.value = res.data
+    const data = await userApi.list()
+    users.value = data.list || data || []
   } catch (e) {
-    error.value = e.response?.data?.error || '加载用户失败'
+    error.value = '加载用户失败'
   }
 })
 </script>

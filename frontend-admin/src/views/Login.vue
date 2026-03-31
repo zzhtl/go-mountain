@@ -4,16 +4,16 @@
       <template #header>
         <h2 class="title">远山公益后台管理系统</h2>
       </template>
-      
+
       <el-form :model="form" label-width="80px" @submit.prevent="onSubmit">
         <el-form-item label="用户名">
           <el-input v-model="form.username" placeholder="请输入用户名" />
         </el-form-item>
-        
+
         <el-form-item label="密码">
           <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password />
         </el-form-item>
-        
+
         <el-form-item>
           <el-button type="primary" native-type="submit" :loading="loading" style="width: 100%">
             登录
@@ -28,9 +28,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import { useUserStore } from '../store/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const loading = ref(false)
 const form = ref({
   username: '',
@@ -42,33 +43,14 @@ const onSubmit = async () => {
     ElMessage.warning('请输入用户名和密码')
     return
   }
-  
+
   loading.value = true
   try {
-    // 先尝试后台用户登录
-    const res = await axios.post('/api/admin/backend-auth/login', form.value)
-    const token = res.data.token
-    const userInfo = res.data.user
-    
-    localStorage.setItem('token', token)
-    localStorage.setItem('userInfo', JSON.stringify(userInfo))
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-    
+    await userStore.login(form.value)
     ElMessage.success('登录成功')
     router.push('/admin/articles')
-  } catch (backendError) {
-    // 如果后台用户登录失败，尝试原有的admin登录
-    try {
-      const res = await axios.post('/api/admin/auth/login', form.value)
-      const token = res.data.token
-      localStorage.setItem('token', token)
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
-      ElMessage.success('登录成功')
-      router.push('/admin/articles')
-    } catch (adminError) {
-      console.error('登录失败', adminError)
-      ElMessage.error(adminError.response?.data?.error || '登录失败，请检查用户名和密码')
-    }
+  } catch (error) {
+    // 错误已在 request.js 拦截器中处理
   } finally {
     loading.value = false
   }
@@ -93,4 +75,4 @@ const onSubmit = async () => {
   margin: 0;
   color: #303133;
 }
-</style> 
+</style>

@@ -79,7 +79,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
+import { articleApi, columnApi } from '../api'
 
 const router = useRouter()
 const articles = ref([])
@@ -100,8 +100,7 @@ const pagination = ref({
 // 加载栏目列表
 const loadColumns = async () => {
   try {
-    const res = await axios.get('/api/admin/columns/')
-    columns.value = res.data
+    columns.value = await columnApi.list()
   } catch (error) {
     console.error('加载栏目失败', error)
   }
@@ -124,9 +123,9 @@ const loadArticles = async () => {
       params.status = filter.value.status
     }
     
-    const res = await axios.get('/api/admin/articles/', { params })
-    articles.value = res.data.list || []
-    pagination.value.total = res.data.total
+    const data = await articleApi.list(params)
+    articles.value = data.list || []
+    pagination.value.total = data.total
   } catch (error) {
     ElMessage.error('加载文章失败')
   } finally {
@@ -156,7 +155,7 @@ const toggleStatus = async (row) => {
       type: 'warning'
     })
     
-    await axios.put(`/api/admin/articles/${row.id}/status`, { status: newStatus })
+    await articleApi.updateStatus(row.id, { status: newStatus })
     ElMessage.success(`${action}成功`)
     loadArticles()
   } catch (error) {
@@ -175,7 +174,7 @@ const deleteArticle = async (row) => {
       type: 'warning'
     })
     
-    await axios.delete(`/api/admin/articles/${row.id}`)
+    await articleApi.delete(row.id)
     ElMessage.success('删除成功')
     loadArticles()
   } catch (error) {

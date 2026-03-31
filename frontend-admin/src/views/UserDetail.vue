@@ -25,15 +25,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import { userApi } from '../api'
 
 const route = useRoute()
 const user = ref(null)
 
 onMounted(async () => {
   try {
-    const res = await axios.get(`/api/admin/users/${route.params.id}`)
-    user.value = res.data
+    user.value = await userApi.get(route.params.id)
   } catch (error) {
     console.error('加载用户失败', error)
   }

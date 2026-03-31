@@ -12,6 +12,7 @@ go-mountain
 
 # Test binary, built with `go test -c`
 *.test
+.claude*
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

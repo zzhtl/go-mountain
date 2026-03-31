@@ -189,7 +189,7 @@ import {
   Plus, Document, Menu, User, UserFilled, Key, Grid,
   Setting, Management, DataAnalysis, Monitor
 } from '@element-plus/icons-vue'
-import axios from 'axios'
+import { menuApi } from '../api'
 
 const loading = ref(false)
 const createLoading = ref(false)
@@ -272,8 +272,7 @@ onMounted(() => {
 const fetchMenus = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/admin/menus')
-    menuList.value = response.data || []
+    menuList.value = await menuApi.list() || []
     menus.value = buildMenuTree(menuList.value)
   } catch (error) {
     ElMessage.error('获取菜单列表失败')
@@ -315,7 +314,7 @@ const createMenu = async () => {
 
   createLoading.value = true
   try {
-    await axios.post('/api/admin/menus', createForm.value)
+    await menuApi.create(createForm.value)
     ElMessage.success('菜单创建成功')
     showCreateDialog.value = false
     
@@ -361,7 +360,7 @@ const updateMenu = async () => {
 
   editLoading.value = true
   try {
-    await axios.put(`/api/admin/menus/${editForm.value.id}`, {
+    await menuApi.update(editForm.value.id, {
       parent_id: editForm.value.parent_id,
       name: editForm.value.name,
       title: editForm.value.title,
@@ -396,9 +395,7 @@ const toggleMenuStatus = async (menu) => {
       }
     )
     
-    await axios.put(`/api/admin/menus/${menu.id}/status`, {
-      status: newStatus
-    })
+    await menuApi.updateStatus(menu.id, { status: newStatus })
     ElMessage.success(`${action}成功`)
     fetchMenus()
   } catch (error) {
@@ -420,7 +417,7 @@ const deleteMenu = async (menu) => {
       }
     )
     
-    await axios.delete(`/api/admin/menus/${menu.id}`)
+    await menuApi.delete(menu.id)
     ElMessage.success('删除成功')
     fetchMenus()
   } catch (error) {
