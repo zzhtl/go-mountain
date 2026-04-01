@@ -20,6 +20,9 @@ const componentMap = {
   'activities/edit/:id': () => import('../views/business/ActivityEdit.vue'),
   'registrations': () => import('../views/business/RegistrationList.vue'),
   'payments': () => import('../views/business/PaymentList.vue'),
+  'codegen': () => import('../views/codegen/CodegenList.vue'),
+  'codegen/create': () => import('../views/codegen/CodegenEdit.vue'),
+  'codegen/edit/:id': () => import('../views/codegen/CodegenEdit.vue'),
 }
 
 export const usePermissionStore = defineStore('permission', () => {
@@ -45,6 +48,9 @@ export const usePermissionStore = defineStore('permission', () => {
     return perms
   }
 
+  // 动态 CRUD 组件（用于代码生成器生成的模块）
+  const DynamicCrud = () => import('../views/codegen/DynamicCrud.vue')
+
   // 从菜单树生成动态路由
   const generateRoutes = (menuTree) => {
     const routes = []
@@ -53,7 +59,8 @@ export const usePermissionStore = defineStore('permission', () => {
         // type=2 是菜单页面，有 path 才生成路由
         if (item.type === 2 && item.path) {
           const routePath = item.path.replace(/^\/admin\//, '')
-          const component = componentMap[routePath]
+          // 优先匹配静态组件，gen- 开头的路由使用 DynamicCrud
+          const component = componentMap[routePath] || (routePath.startsWith('gen-') ? DynamicCrud : null)
           if (component) {
             routes.push({
               path: routePath,
@@ -77,6 +84,8 @@ export const usePermissionStore = defineStore('permission', () => {
       { path: 'users/:id', component: componentMap['users/:id'], meta: { title: '用户详情', hidden: true } },
       { path: 'activities/create', component: componentMap['activities/create'], meta: { title: '创建活动', hidden: true } },
       { path: 'activities/edit/:id', component: componentMap['activities/edit/:id'], meta: { title: '编辑活动', hidden: true } },
+      { path: 'codegen/create', component: componentMap['codegen/create'], meta: { title: '新建生成配置', hidden: true } },
+      { path: 'codegen/edit/:id', component: componentMap['codegen/edit/:id'], meta: { title: '编辑生成配置', hidden: true } },
     ]
     for (const extra of extras) {
       if (extra.component && !routes.find(r => r.path === extra.path)) {

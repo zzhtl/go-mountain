@@ -4,6 +4,8 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/ArtisanCloud/PowerWeChat/v3/src/kernel/models"
+	"github.com/ArtisanCloud/PowerWeChat/v3/src/payment/notify/request"
 	"github.com/gin-gonic/gin"
 
 	"github.com/zzhtl/go-mountain/internal/pkg/response"
@@ -70,34 +72,52 @@ func (h *PaymentHandler) Refund(c *gin.Context) {
 }
 
 // WechatNotify 微信支付回调（不需要JWT认证）
+// 使用 PowerWeChat 进行签名验证和数据解密
 func (h *PaymentHandler) WechatNotify(c *gin.Context) {
-	body, err := io.ReadAll(c.Request.Body)
+	ctx := c.Request.Context()
+
+	// 获取 PowerWeChat 支付实例
+	app, err := h.svc.GetPaymentApp(ctx)
 	if err != nil {
-		c.JSON(500, gin.H{"code": "FAIL", "message": "读取请求体失败"})
+		c.JSON(500, gin.H{"code": "FAIL", "message": "支付配置错误: " + err.Error()})
 		return
 	}
 
-	// TODO: 实际接入时需要：
-	// 1. 验证微信签名（从 Header 获取 Wechatpay-Signature 等）
-	// 2. 解密通知数据（AES-256-GCM）
-	// 3. 提取 out_trade_no 和 transaction_id
+	// 使用 PowerWeChat 处理支付回调（自动验签 + 解密通知数据）
+	resp, err := app.HandlePaidNotify(
+		c.Request,
+		func(message *request.RequestNotify, transaction *models.Transaction, fail func(message string)) interface{} {
+			if transaction == nil {
+				fail("交易数据为空")
+				return nil
+			}
 
-	// 临时处理：从请求中解析订单信息
-	orderNo := c.Query("out_trade_no")
-	transactionID := c.Query("transaction_id")
+			// 仅处理支付成功的通知
+			if transaction.TradeState != "SUCCESS" {
+				return true
+			}
 
-	if orderNo == "" {
-		c.JSON(400, gin.H{"code": "FAIL", "message": "缺少订单号"})
-		return
-	}
+			// 序列化通知数据用于存档
+			notifyData := service.MarshalTransaction(transaction)
 
-	if err := h.svc.HandleNotify(c.Request.Context(), orderNo, transactionID, body); err != nil {
+			// 更新支付状态和关联业务状态
+			if err := h.svc.HandleNotify(ctx, transaction.OutTradeNo, transaction.TransactionID, notifyData); err != nil {
+				fail("处理支付通知失败: " + err.Error())
+				return nil
+			}
+
+			return true
+		},
+	)
+
+	if err != nil {
 		c.JSON(500, gin.H{"code": "FAIL", "message": err.Error()})
 		return
 	}
 
-	// 微信要求返回此格式表示成功
-	c.JSON(200, gin.H{"code": "SUCCESS", "message": "成功"})
+	// 将 PowerWeChat 的响应转发给微信服务器
+	body, _ := io.ReadAll(resp.Body)
+	c.Data(resp.StatusCode, "application/json", body)
 }
 
 // CreateOrder 创建支付订单（小程序端）
@@ -131,7 +151,7 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 		return
 	}
 
-	// 获取活动价格
+	// 获取活动信息
 	actSvc := service.NewActivityService(h.svc.GetDB())
 	activity, err := actSvc.Get(c.Request.Context(), reg.ActivityID)
 	if err != nil {
@@ -141,7 +161,8 @@ func (h *PaymentHandler) CreateOrder(c *gin.Context) {
 
 	openIDStr, _ := openID.(string)
 	payment, payParams, err := h.svc.CreatePrepayOrder(
-		c.Request.Context(), userID, activity.Price, "registration", req.RegistrationID, openIDStr,
+		c.Request.Context(), userID, activity.Price,
+		"registration", req.RegistrationID, openIDStr, activity.Title,
 	)
 	if err != nil {
 		response.ServerError(c, err.Error())

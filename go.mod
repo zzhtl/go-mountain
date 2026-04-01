@@ -3,6 +3,7 @@ module github.com/zzhtl/go-mountain
 go 1.25.0
 
 require (
+	github.com/ArtisanCloud/PowerLibs/v3 v3.3.2
 	github.com/ArtisanCloud/PowerWeChat/v3 v3.4.8
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v4 v4.5.2
@@ -14,7 +15,6 @@ require (
 )
 
 require (
-	github.com/ArtisanCloud/PowerLibs/v3 v3.3.2 // indirect
 	github.com/bytedance/sonic v1.13.2 // indirect
 	github.com/bytedance/sonic/loader v0.2.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

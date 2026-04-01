@@ -41,8 +41,9 @@ func Setup(engine *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	userSvc := service.NewUserService(db, cfg.Wechat.AppID, cfg.Wechat.Secret)
 	activitySvc := service.NewActivityService(db)
 	registrationSvc := service.NewRegistrationService(db)
-	paymentSvc := service.NewPaymentService(db)
 	systemConfigSvc := service.NewSystemConfigService(db)
+	paymentSvc := service.NewPaymentService(db, systemConfigSvc)
+	codegenSvc := service.NewCodegenService(db)
 
 	// 创建 handlers
 	authHandler := handler.NewAuthHandler(authSvc)
@@ -57,6 +58,7 @@ func Setup(engine *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	registrationHandler := handler.NewRegistrationHandler(registrationSvc)
 	paymentHandler := handler.NewPaymentHandler(paymentSvc)
 	systemConfigHandler := handler.NewSystemConfigHandler(systemConfigSvc)
+	codegenHandler := handler.NewCodegenHandler(codegenSvc)
 
 	// ==================== 小程序 API ====================
 	mp := api.Group("/mp")
@@ -194,6 +196,18 @@ func Setup(engine *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		sysConfigs.POST("/", systemConfigHandler.Save)
 		sysConfigs.POST("/batch", systemConfigHandler.BatchSave)
 		sysConfigs.DELETE("/", systemConfigHandler.Delete)
+
+		// 代码生成器
+		codegen := adminAuth.Group("/codegen")
+		codegen.GET("/tables", codegenHandler.GetTables)
+		codegen.GET("/columns", codegenHandler.GetTableColumns)
+		codegen.GET("/", codegenHandler.List)
+		codegen.POST("/", codegenHandler.Create)
+		codegen.GET("/:id", codegenHandler.Get)
+		codegen.PUT("/:id", codegenHandler.Update)
+		codegen.DELETE("/:id", codegenHandler.Delete)
+		codegen.GET("/:id/preview", codegenHandler.Preview)
+		codegen.POST("/:id/generate", codegenHandler.Generate)
 
 		// 文件上传
 		upload := adminAuth.Group("/upload")

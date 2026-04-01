@@ -100,6 +100,19 @@ export const systemConfigApi = {
   delete: key => request.delete('/api/admin/system-configs/', { params: { key } })
 }
 
+// ==================== 代码生成器 ====================
+export const codegenApi = {
+  getTables: () => request.get('/api/admin/codegen/tables'),
+  getColumns: tableName => request.get('/api/admin/codegen/columns', { params: { table_name: tableName } }),
+  list: params => request.get('/api/admin/codegen/', { params }),
+  get: id => request.get(`/api/admin/codegen/${id}`),
+  create: data => request.post('/api/admin/codegen/', data),
+  update: (id, data) => request.put(`/api/admin/codegen/${id}`, data),
+  delete: id => request.delete(`/api/admin/codegen/${id}`),
+  preview: id => request.get(`/api/admin/codegen/${id}/preview`),
+  generate: id => request.post(`/api/admin/codegen/${id}/generate`)
+}
+
 // ==================== 文件上传 ====================
 export const uploadApi = {
   image: formData => request.post('/api/admin/upload/image', formData, {
